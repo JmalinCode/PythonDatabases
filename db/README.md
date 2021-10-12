@@ -1,0 +1,1 @@
+# It is directory for local databases
