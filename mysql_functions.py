@@ -93,7 +93,7 @@ def mysql_delete_by_id(database_name, table_name, raw_id):
 def mysql_select(database_name, table_name):
 	try:
 		connection = connect(host = "localhost", user = "anton", password = "3ntTP4+3_i", database = database_name)
-		select_query = f"SELECT * FROM {table_name}"
+		select_query = f"SELECT company, brand, model, price FROM {table_name}"
 		cursor = connection.cursor()
 		cursor.execute(select_query)
 		mysql_row_list = []
@@ -104,3 +104,14 @@ def mysql_select(database_name, table_name):
 		return mysql_row_list
 	except Error as e:
 		print(e)
+
+mysql_connection_to_server()
+mysql_create_database("ANTON")
+mysql_connection_to_database("ANTON")
+mysql_create_table("ANTON")
+mysql_insert("ANTON", "carSale")
+mysql_update("ANTON", "carSale", 0, 10000)
+mysql_delete_by_id("ANTON", "carSale", 0)
+mysql_select("ANTON", "carSale")
+
+
