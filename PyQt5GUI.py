@@ -10,6 +10,8 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from sqlite_functions import *
+from mysql_functions import *
+from psql_functions import *
 
 
 class Ui_MainWindow(object):
@@ -80,10 +82,10 @@ class Ui_MainWindow(object):
         self.tableWidget.setGeometry(QtCore.QRect(10, 210, 481, 271))
         self.tableWidget.setObjectName("tableWidget")
         self.tableWidget.setColumnCount(4)
-        self.tableWidget.setColumnWidth(0, 130)
-        self.tableWidget.setColumnWidth(1, 130)
-        self.tableWidget.setColumnWidth(2, 130)
-        self.tableWidget.setColumnWidth(3, 130)
+        self.tableWidget.setColumnWidth(0, 115)
+        self.tableWidget.setColumnWidth(1, 125)
+        self.tableWidget.setColumnWidth(2, 125)
+        self.tableWidget.setColumnWidth(3, 110)
         self.tableWidget.setHorizontalHeaderLabels(['company', 'brand', 'model', 'price'])
         MainWindow.setCentralWidget(self.centralwidget)
 
@@ -111,11 +113,17 @@ class Ui_MainWindow(object):
         """
             main function
         """
-        self.current_database = 'sqlite'  # mysql, postgresql, example, delete later ---
+        self.current_database = 'sqlite'
 
         self.sqlite_con = sqlite_connection('SQLite3DB')
-        # self.mysql_con = mysql_connection('MySQLDB')
-        # self.postgresql_con = postgresql_connection('PostgreSQLDB')
+        self.psql_con = psql_connection()
+        psql_table_create(self.psql_con)
+        # edit later maybe
+        self.mysql_con = mysql_connection_to_server()
+        mysql_database_name = 'mysql_db'
+        mysql_create_database(mysql_database_name, self.mysql_con)
+        self.mysql_con = mysql_connection_to_database(mysql_database_name)
+
 
         sqlite_table_create(self.sqlite_con)
         self.qt_table_update()
@@ -123,6 +131,8 @@ class Ui_MainWindow(object):
         self.add_Button.clicked.connect(lambda: self.database_insert())
         self.update_Button.clicked.connect(lambda: self.database_update())
         self.delete_Button.clicked.connect(lambda: self.database_delete_by_id())
+        self.export1_Button.clicked.connect(lambda: self.export_sqlite_to_postgresql())
+        self.export2_Button.clicked.connect(lambda: self.export_postgresql_to_mysql())
 
     def database_insert(self):
         company = self.company_Edit.text()
@@ -133,82 +143,63 @@ class Ui_MainWindow(object):
         # change later, error with 'letters' input ------
         columns_list = [company, brand, model, int(price) if price != '' else None]
 
-        sqlite_insert(self.sqlite_con, columns_list)  # example, delete later-----
+        self.database_recognize(sqlite_insert(self.sqlite_con, columns_list))
 
-        # self.database_recognize(
-        # mysql_insert(self.mysql_con, columns_list),
-        # postgresql_insert(self.pgsql_con, columns_list),
-        # sqlite_insert(self.sqlite_con, columns_list))
-
-        self.qt_table_update() # testing
+        self.qt_table_update()
 
     def database_update(self):
         new_price = self.new_price_Edit.text()
         row_id = self.update_id_Edit.text()
+        # add if self.current_database == "sqlite": else.............................................................
+        self.database_recognize(sqlite_update(self.sqlite_con, int(row_id), int(new_price)))
 
-        sqlite_update(self.sqlite_con, int(row_id), int(new_price))  # example, delete later-----
-
-        # self.database_recognize(
-        # mysql_update(self.mysql_con, int(row_id), int(new_price)),
-        # postgresql_update(self.pgsql_con, int(row_id), int(new_price)),
-        # sqlite_update(self.sqlite_con, , int(row_id), int(new_price)))
-
-        self.qt_table_update()  # testing
+        self.qt_table_update()
 
     def database_delete_by_id(self):
         row_id = self.delete_id_Edit.text()
+        self.database_recognize(sqlite_delete_by_id(self.sqlite_con, int(row_id)))
 
-        sqlite_delete_by_id(self.sqlite_con, int(row_id))  # example, delete later-----
+        self.qt_table_update()
 
-        # self.database_recognize(
-        # mysql_delete_by_id(self.mysql_con, int(row_id)),
-        # postgresql_delete_by_id(self.pgsql_con, int(row_id)),
-        # sqlite_delete_by_id(self.sqlite_con, int(row_id)))
+    def export_sqlite_to_postgresql(self):
+        self.current_database = 'postgresql'
+        export_list = sqlite_select(self.sqlite_con)
+        for row in export_list:
+            psql_insert(self.psql_con, row)
 
-        self.qt_table_update()  # testing
+        self.qt_table_update()
 
-    def export_mysql_to_postgresql(self):
-        # self.current_database = 'postgresql'
-        pass
-
-    def export_postgresql_to_sqlite(self):
-        # self.current_database = 'sqlite'
+    def export_postgresql_to_mysql(self):
+        self.current_database = 'mysql'
         pass
 
     def qt_table_update(self):
         """
             function updates table in GUI
         """
-        sqlite_lst = sqlite_select(self.sqlite_con)  # example, delete later-----
-        # self.database_recognize(
-        # mysql_select(self.mysql_con),
-        # postgresql_select(self.pgsql_con),
-        # sqlite_select(self.sqlite_con))
-
+        table_list = []
+        if self.current_database == 'sqlite':
+            table_list = sqlite_select(self.sqlite_con)
+        elif self.current_database == 'postgresql':
+            table_list = psql_select(self.psql_con)
+        elif self.current_database == 'mysql':
+            table_list = mysql_select(self.my)
         # uploading database table into PyQt Table
         table_row = 0
-        self.tableWidget.setRowCount(len(sqlite_lst))
-        for row in sqlite_lst:
+        self.tableWidget.setRowCount(len(table_list))
+        for row in table_list:
             for i in range(len(row)):
-                print(row[i])
                 self.tableWidget.setItem(table_row, i, QtWidgets.QTableWidgetItem(str(row[i])))
             table_row += 1
 
-    def database_recognize(self, mysql_func, postgresql_func, sqlite_func):
+    def database_recognize(self, sqlite_func):
         """
             function recognizes which functions to use for current DB
         """
-        if self.current_database == 'mysql':
-            mysql_func()
-
-        elif self.current_database == 'postgresql':
-            postgresql_func()
-
-        elif self.current_database == 'sqlite':
-            sqlite_func()
-
+        if self.current_database == 'sqlite':
+            sqlite_func
         else:
-            print('database has not been recognized')
+            pass
 
 
 if __name__ == "__main__":
