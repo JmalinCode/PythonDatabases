@@ -171,7 +171,12 @@ class Ui_MainWindow(object):
 
     def export_postgresql_to_mysql(self):
         self.current_database = 'mysql'
-        pass
+        export_list = psql_select(self.psql_con)
+        for row in export_list:
+            mysql_insert(self.psql_con, row)
+
+        self.qt_table_update()
+
 
     def qt_table_update(self):
         """
@@ -183,7 +188,7 @@ class Ui_MainWindow(object):
         elif self.current_database == 'postgresql':
             table_list = psql_select(self.psql_con)
         elif self.current_database == 'mysql':
-            table_list = mysql_select(self.my)
+            table_list = mysql_select(self.mysql_con)
         # uploading database table into PyQt Table
         table_row = 0
         self.tableWidget.setRowCount(len(table_list))
