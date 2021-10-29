@@ -2,6 +2,7 @@ click==8.0.3
 colorama==0.4.4
 mysql-connector-python==8.0.26
 mysql-to-sqlite3==1.4.9
+peewee==3.14.8
 protobuf==3.18.1
 psycopg2==2.9.1
 PyQt5==5.15.4
