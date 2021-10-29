@@ -9,9 +9,7 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from sqlite_functions import *
-from mysql_functions import *
-from psql_functions import *
+from databases_orm_peewee_functions import *
 
 
 class Ui_MainWindow(object):
@@ -81,16 +79,19 @@ class Ui_MainWindow(object):
         self.tableWidget = QtWidgets.QTableWidget(self.centralwidget)
         self.tableWidget.setGeometry(QtCore.QRect(10, 210, 481, 271))
         self.tableWidget.setObjectName("tableWidget")
-        self.tableWidget.setColumnCount(4)
-        self.tableWidget.setColumnWidth(0, 115)
-        self.tableWidget.setColumnWidth(1, 125)
-        self.tableWidget.setColumnWidth(2, 125)
-        self.tableWidget.setColumnWidth(3, 110)
-        self.tableWidget.setHorizontalHeaderLabels(['company', 'brand', 'model', 'price'])
+        self.tableWidget.setColumnCount(5)
+        self.tableWidget.setColumnWidth(0, 60)
+        self.tableWidget.setColumnWidth(1, 100)
+        self.tableWidget.setColumnWidth(2, 100)
+        self.tableWidget.setColumnWidth(3, 100)
+        self.tableWidget.setColumnWidth(4, 100)
+        self.tableWidget.setHorizontalHeaderLabels(['id', 'company', 'brand', 'model', 'price'])
+        self.tableWidget.verticalHeader().setVisible(False)
         MainWindow.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
         self.add_functions()
 
     def retranslateUi(self, MainWindow):
@@ -115,17 +116,18 @@ class Ui_MainWindow(object):
         """
         self.current_database = 'sqlite'
 
-        self.sqlite_con = sqlite_connection('SQLite3DB')
-        self.psql_con = psql_connection()
-        psql_table_create(self.psql_con)
-        # edit later maybe
-        self.mysql_con = mysql_connection_to_server()
-        mysql_database_name = 'mysql_db'
-        mysql_create_database(mysql_database_name, self.mysql_con)
-        self.mysql_con = mysql_connection_to_database(mysql_database_name)
+        db_table_create(sqlite_db)
 
+        self.mysql_db = MySQLDatabase(database='mysql_db',
+                                      user='root',
+                                      password='Lbvfrexth37',
+                                      host='localhost')
+        self.psql_db = PostgresqlDatabase(database="postgres",
+                                          user="postgres",
+                                          password="Password32123",
+                                          host="127.0.0.1",
+                                          port="5432")
 
-        sqlite_table_create(self.sqlite_con)
         self.qt_table_update()
 
         self.add_Button.clicked.connect(lambda: self.database_insert())
@@ -143,38 +145,53 @@ class Ui_MainWindow(object):
         # change later, error with 'letters' input ------
         columns_list = [company, brand, model, int(price) if price != '' else None]
 
-        self.database_recognize(sqlite_insert(self.sqlite_con, columns_list))
+        self.database_recognize(sqlite_insert(columns_list))
 
         self.qt_table_update()
 
     def database_update(self):
         new_price = self.new_price_Edit.text()
         row_id = self.update_id_Edit.text()
-        # add if self.current_database == "sqlite": else.............................................................
-        self.database_recognize(sqlite_update(self.sqlite_con, int(row_id), int(new_price)))
+
+        self.database_recognize(sqlite_update(int(row_id), int(new_price)))
 
         self.qt_table_update()
 
     def database_delete_by_id(self):
         row_id = self.delete_id_Edit.text()
-        self.database_recognize(sqlite_delete_by_id(self.sqlite_con, int(row_id)))
+
+        self.database_recognize(sqlite_delete_by_id(int(row_id)))
 
         self.qt_table_update()
 
     def export_sqlite_to_postgresql(self):
+        """
+            function exports SQLite3 DB to PostgreSQL
+        """
         self.current_database = 'postgresql'
-        export_list = sqlite_select(self.sqlite_con)
+
+        export_list = db_select()
+
+        CarSale._meta.database = self.psql_db
+        db_table_create(self.psql_db)
         for row in export_list:
-            psql_insert(self.psql_con, row)
+            db_export_insert(row)
 
         self.qt_table_update()
 
     def export_postgresql_to_mysql(self):
+        """
+            function exports PostgreSQL DB to MySQL
+        """
         self.current_database = 'mysql'
-        export_list = psql_select(self.psql_con)
-        for row in export_list:
-            mysql_insert(self.psql_con, row)
 
+        export_list = psql_export_select()
+
+        CarSale._meta.database = self.mysql_db
+        db_table_create(self.mysql_db)
+        for row in export_list:
+            db_export_insert(row)
+            print(row)
         self.qt_table_update()
 
 
@@ -184,11 +201,11 @@ class Ui_MainWindow(object):
         """
         table_list = []
         if self.current_database == 'sqlite':
-            table_list = sqlite_select(self.sqlite_con)
+            table_list = db_select()
         elif self.current_database == 'postgresql':
-            table_list = psql_select(self.psql_con)
+            table_list = db_select()
         elif self.current_database == 'mysql':
-            table_list = mysql_select(self.mysql_con)
+            table_list = db_select()
         # uploading database table into PyQt Table
         table_row = 0
         self.tableWidget.setRowCount(len(table_list))
