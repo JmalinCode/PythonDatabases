@@ -1,6 +1,10 @@
 # PythonDatabases
 Homeworks for Databases topic in Django KPI Course
 
-To run project use commands:
-`pip install -r requirements.txt`
-`python PyQt5GUI.py`
+
+[Practical work №1](https://github.com/JmalinCode/PythonDatabases/tree/prac1)
+
+---
+[Practical work №2](https://github.com/JmalinCode/PythonDatabases/tree/prac2)
+
+---
