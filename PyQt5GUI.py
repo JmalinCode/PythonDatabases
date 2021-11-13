@@ -9,7 +9,7 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from databases_orm_peewee_functions import *
+from mongodb_func import *
 
 
 class Ui_MainWindow(object):
@@ -70,12 +70,6 @@ class Ui_MainWindow(object):
         self.label_7 = QtWidgets.QLabel(self.centralwidget)
         self.label_7.setGeometry(QtCore.QRect(30, 100, 31, 16))
         self.label_7.setObjectName("label_7")
-        self.export1_Button = QtWidgets.QPushButton(self.centralwidget)
-        self.export1_Button.setGeometry(QtCore.QRect(40, 170, 171, 28))
-        self.export1_Button.setObjectName("export1_Button")
-        self.export2_Button = QtWidgets.QPushButton(self.centralwidget)
-        self.export2_Button.setGeometry(QtCore.QRect(312, 170, 161, 28))
-        self.export2_Button.setObjectName("export2_Button")
         self.tableWidget = QtWidgets.QTableWidget(self.centralwidget)
         self.tableWidget.setGeometry(QtCore.QRect(10, 210, 481, 271))
         self.tableWidget.setObjectName("tableWidget")
@@ -107,34 +101,24 @@ class Ui_MainWindow(object):
         self.label_5.setText(_translate("MainWindow", "Brand"))
         self.label_6.setText(_translate("MainWindow", "Model"))
         self.label_7.setText(_translate("MainWindow", "Price"))
-        self.export1_Button.setText(_translate("MainWindow", "Export to DB2"))
-        self.export2_Button.setText(_translate("MainWindow", "Export to DB3"))
 
     def add_functions(self):
         """
             main function
         """
-        self.current_database = 'sqlite'
+        user_login = 'newuser'
+        user_password = 'Password32123'
 
-        db_table_create(sqlite_db)
-
-        self.mysql_db = MySQLDatabase(database='mysql_db',
-                                      user='root',
-                                      password='Lbvfrexth37',
-                                      host='localhost')
-        self.psql_db = PostgresqlDatabase(database="postgres",
-                                          user="postgres",
-                                          password="Password32123",
-                                          host="127.0.0.1",
-                                          port="5432")
+        mongo_cluster = MongoClient(
+            f"mongodb+srv://{user_login}:{user_password}@cluster1.rtnha.mongodb.net/testdb?retryWrites=true&w=majority")
+        mongodb_con = mongo_cluster.testdb
+        self.collection = mongodb_con.test
 
         self.qt_table_update()
 
         self.add_Button.clicked.connect(lambda: self.database_insert())
         self.update_Button.clicked.connect(lambda: self.database_update())
         self.delete_Button.clicked.connect(lambda: self.database_delete_by_id())
-        self.export1_Button.clicked.connect(lambda: self.export_sqlite_to_postgresql())
-        self.export2_Button.clicked.connect(lambda: self.export_postgresql_to_mysql())
 
     def database_insert(self):
         company = self.company_Edit.text()
@@ -143,9 +127,12 @@ class Ui_MainWindow(object):
         price = self.price_Edit.text()
 
         # change later, error with 'letters' input ------
-        columns_list = [company, brand, model, int(price) if price != '' else None]
+        columns_set = {'company': company,
+                       'brand': brand,
+                       'model': model,
+                       'price': int(price) if price != '' else None}
 
-        self.database_recognize(sqlite_insert(columns_list))
+        mongodb_insert(self.collection, columns_set)
 
         self.qt_table_update()
 
@@ -153,59 +140,22 @@ class Ui_MainWindow(object):
         new_price = self.new_price_Edit.text()
         row_id = self.update_id_Edit.text()
 
-        self.database_recognize(sqlite_update(int(row_id), int(new_price)))
+        mongodb_update(self.collection, int(row_id), int(new_price))
 
         self.qt_table_update()
 
     def database_delete_by_id(self):
         row_id = self.delete_id_Edit.text()
 
-        self.database_recognize(sqlite_delete_by_id(int(row_id)))
+        mongodb_delete_by_id(self.collection, int(row_id))
 
         self.qt_table_update()
-
-    def export_sqlite_to_postgresql(self):
-        """
-            function exports SQLite3 DB to PostgreSQL
-        """
-        self.current_database = 'postgresql'
-
-        export_list = db_select()
-
-        CarSale._meta.database = self.psql_db
-        db_table_create(self.psql_db)
-        for row in export_list:
-            db_export_insert(row)
-
-        self.qt_table_update()
-
-    def export_postgresql_to_mysql(self):
-        """
-            function exports PostgreSQL DB to MySQL
-        """
-        self.current_database = 'mysql'
-
-        export_list = psql_export_select()
-
-        CarSale._meta.database = self.mysql_db
-        db_table_create(self.mysql_db)
-        for row in export_list:
-            db_export_insert(row)
-            print(row)
-        self.qt_table_update()
-
 
     def qt_table_update(self):
         """
             function updates table in GUI
         """
-        table_list = []
-        if self.current_database == 'sqlite':
-            table_list = db_select()
-        elif self.current_database == 'postgresql':
-            table_list = db_select()
-        elif self.current_database == 'mysql':
-            table_list = db_select()
+        table_list = mongodb_table_select(self.collection)
         # uploading database table into PyQt Table
         table_row = 0
         self.tableWidget.setRowCount(len(table_list))
@@ -214,14 +164,7 @@ class Ui_MainWindow(object):
                 self.tableWidget.setItem(table_row, i, QtWidgets.QTableWidgetItem(str(row[i])))
             table_row += 1
 
-    def database_recognize(self, sqlite_func):
-        """
-            function recognizes which functions to use for current DB
-        """
-        if self.current_database == 'sqlite':
-            sqlite_func
-        else:
-            pass
+        print_json(self.collection)
 
 
 if __name__ == "__main__":
