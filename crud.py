@@ -1,25 +1,39 @@
 from pymongo import MongoClient
 
 
-
-tavria = {"power": "73", "max_speed": "140", "weight": "800", "engine_volume": "1.2"}
-lacetti = {"power": "122", "max_speed": "180", "weight": "1665", "engine_volume": "1.8"}
-logan = {"power": "90", "max_speed": "160", "weight": "1545", "engine_volume": "1.6"}
-
-client = MongoClient()
-col = client.mydb.test
-
-def create(lst):
-    result = col.insert_many(lst)
+# CRUD
+def create(lst_car_set):
+    return mytb.insert_many(lst_car_set)
 
 
 def update(before, after):
-    result = col.update_one(before, after)
+    return mytb.update_one(before, after)
 
 
 def read(record):
-    result = col.find(record)
+    return mytb.find(record)
 
 
 def delete(record):
-    result = col.delete_one(record)
+    return mytb.delete_one(record)
+
+
+def print_result():
+    return print(list(mydb.mytb.find({})))
+
+
+# DB records
+tavria = {"rowid": 1, "manufacter": "ZAZ", 
+          "power": "73", "max_speed": "140"}
+lacetti = {"rowid": 2, "manufacter": "Chevrolet", 
+           "power": "122", "max_speed": "180"}
+logan = {"rowid": 3, "manufacter": "Renault", 
+         "power": "90", "max_speed": "160"}
+
+#Create client and insert records in db
+client = MongoClient()
+
+
+mydb = client.car_database
+mytb = mydb.cars
+create([tavria, lacetti, logan])
