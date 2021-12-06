@@ -8,3 +8,9 @@ Homeworks for Databases topic in Django KPI Course
 [Practical work №2](https://github.com/JmalinCode/PythonDatabases/tree/prac2)
 
 ---
+[Practical work №3](https://github.com/JmalinCode/PythonDatabases/tree/prac3)
+
+---
+[Practical work №4](https://github.com/JmalinCode/PythonDatabases/tree/prac4)
+
+---
