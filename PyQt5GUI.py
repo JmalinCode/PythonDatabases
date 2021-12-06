@@ -9,9 +9,24 @@
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from mongodb_func import *
+import sqlalchemy
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, MetaData, Table, Integer, String, Column, DateTime, ForeignKey, Numeric
+from sqlalchemy_func import *
+
+Base = declarative_base()
 
 
+class CarSale(Base):
+    __tablename__ = 'CarSales'
+    row_id = Column(Integer, primary_key=True)
+    company = Column(String(250))
+    brand = Column(String(250))
+    model = Column(String(250))
+    price = Column(Integer)
+            
+            
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -70,6 +85,9 @@ class Ui_MainWindow(object):
         self.label_7 = QtWidgets.QLabel(self.centralwidget)
         self.label_7.setGeometry(QtCore.QRect(30, 100, 31, 16))
         self.label_7.setObjectName("label_7")
+        self.export1_Button = QtWidgets.QPushButton(self.centralwidget)
+        self.export1_Button.setGeometry(QtCore.QRect(160, 170, 171, 28))
+        self.export1_Button.setObjectName("export1_Button")
         self.tableWidget = QtWidgets.QTableWidget(self.centralwidget)
         self.tableWidget.setGeometry(QtCore.QRect(10, 210, 481, 271))
         self.tableWidget.setObjectName("tableWidget")
@@ -101,24 +119,32 @@ class Ui_MainWindow(object):
         self.label_5.setText(_translate("MainWindow", "Brand"))
         self.label_6.setText(_translate("MainWindow", "Model"))
         self.label_7.setText(_translate("MainWindow", "Price"))
+        self.export1_Button.setText(_translate("MainWindow", "Export to DB2"))
 
     def add_functions(self):
         """
             main function
         """
-        user_login = 'newuser'
-        user_password = 'Password32123'
+        self.mysql_engine = sqlalchemy.create_engine("mysql+pymysql://root:Lbvfrexth37@localhost/mysql_db")
 
-        mongo_cluster = MongoClient(
-            f"mongodb+srv://{user_login}:{user_password}@cluster1.rtnha.mongodb.net/testdb?retryWrites=true&w=majority")
-        mongodb_con = mongo_cluster.testdb
-        self.collection = mongodb_con.test
+        self.psql_engine = sqlalchemy.create_engine("postgresql+psycopg2://postgres:Password32123@localhost/postgres")
+
+        Base.metadata.create_all(self.psql_engine)
+        Base.metadata.create_all(self.mysql_engine)
+
+        session = sessionmaker(bind=self.mysql_engine)
+        self.s = session()
+
+        # psql_session = sessionmaker(bind=self.psql_engine)
+        # self.s = psql_session()
+
 
         self.qt_table_update()
 
         self.add_Button.clicked.connect(lambda: self.database_insert())
         self.update_Button.clicked.connect(lambda: self.database_update())
         self.delete_Button.clicked.connect(lambda: self.database_delete_by_id())
+        self.export1_Button.clicked.connect(lambda: self.export_to_psql())
 
     def database_insert(self):
         company = self.company_Edit.text()
@@ -132,7 +158,7 @@ class Ui_MainWindow(object):
                        'model': model,
                        'price': int(price) if price != '' else None}
 
-        mongodb_insert(self.collection, columns_set)
+        insert(self.s, CarSale, columns_set)
 
         self.qt_table_update()
 
@@ -140,14 +166,26 @@ class Ui_MainWindow(object):
         new_price = self.new_price_Edit.text()
         row_id = self.update_id_Edit.text()
 
-        mongodb_update(self.collection, int(row_id), int(new_price))
+        update(self.s, CarSale, row_id, new_price)
 
         self.qt_table_update()
 
     def database_delete_by_id(self):
         row_id = self.delete_id_Edit.text()
 
-        mongodb_delete_by_id(self.collection, int(row_id))
+        delete_by_id(self.s, CarSale, row_id)
+
+        self.qt_table_update()
+
+    def export_to_psql(self):
+        export_data = dict_select(self.s, CarSale)
+
+        new_session = sessionmaker(bind=self.psql_engine)
+        self.s = new_session()
+
+        for row in export_data:
+            print(row)
+            insert(self.s, CarSale, row)
 
         self.qt_table_update()
 
@@ -155,7 +193,7 @@ class Ui_MainWindow(object):
         """
             function updates table in GUI
         """
-        table_list = mongodb_table_select(self.collection)
+        table_list = table_select(self.s, CarSale)
         # uploading database table into PyQt Table
         table_row = 0
         self.tableWidget.setRowCount(len(table_list))
@@ -164,7 +202,7 @@ class Ui_MainWindow(object):
                 self.tableWidget.setItem(table_row, i, QtWidgets.QTableWidgetItem(str(row[i])))
             table_row += 1
 
-        print_json(self.collection)
+        print_json(table_list)
 
 
 if __name__ == "__main__":
